@@ -2,7 +2,7 @@
   "name": "Cloud Camera",
   "short_name": "Cloud Camera",
   "description": "Take photos and videos that save directly to your S3 bucket",
-  "start_url": "/",
+  "start_url": "/CloudCamera",
   "display": "standalone",
   "background_color": "#FFFFFF",
   "theme_color": "#007AFF",
