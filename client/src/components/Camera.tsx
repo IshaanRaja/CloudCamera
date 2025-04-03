@@ -21,7 +21,6 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
 
     const reader = new FileReader();
     reader.onload = () => setLastThumbnail(reader.result as string);
-    reader.readAsDataURL(file);
 
     const now = new Date();
     const filename = `${cameraMode}_${now.getTime()}.${file.type.split("/")[1]}`;
@@ -30,7 +29,7 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
       type: file.type,
       size: file.size,
       date: now.toISOString(),
-      url: URL.createObjectURL(file),
+      url: reader.readAsDataURL(file),
       blob: file,
     };
 
