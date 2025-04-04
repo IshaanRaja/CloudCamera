@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { uploadMediaToS3, uploadBufferedMediaToS3 } from "@/lib/s3";
-import { saveMediaToLocalBuffer } from "@/lib/storage";
+import { saveMediaToLocalBuffer, getBufferedMedia } from "@/lib/storage";
 import { MediaItem, S3Config } from "@/lib/types";
 
 interface CameraProps {
