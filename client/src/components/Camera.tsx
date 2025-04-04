@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { uploadMediaToS3 } from "@/lib/s3";
+import { useState, useEffect } from "react";
+import { uploadMediaToS3, uploadBufferedMediaToS3 } from "@/lib/s3";
 import { saveMediaToLocalBuffer } from "@/lib/storage";
 import { MediaItem, S3Config } from "@/lib/types";
 
@@ -20,8 +20,14 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = () => setLastThumbnail(reader.result as string);
-
+    reader.readAsDataURL(file);
+    
+    const base64String: string = await new Promise((resolve) => {
+      reader.onloadend = () => resolve(reader.result as string);
+    });
+    
+    setLastThumbnail(base64String);
+    
     const now = new Date();
     const filename = `${cameraMode}_${now.getTime()}.${file.type.split("/")[1]}`;
     const mediaItem: MediaItem = {
@@ -29,7 +35,7 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
       type: file.type,
       size: file.size,
       date: now.toISOString(),
-      url: reader.readAsDataURL(file),
+      url: base64String,
       blob: file,
     };
 
@@ -49,6 +55,27 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
       showErrorToast("Media saved locally. Will upload when connected.");
     }
   };
+
+   // Upload any media that was saved when offline
+   const uploadBufferedMedia = async () => {
+     if (!isConnected || !s3Config.bucket) return;
+
+     try {
+       const bufferedMedia = getBufferedMedia();
+       if (bufferedMedia.length > 0) {
+         await uploadBufferedMediaToS3(bufferedMedia, s3Config);
+       }
+     } catch (error) {
+       console.error("Failed to upload buffered media:", error);
+       showErrorToast("Failed to upload some media items");
+     }
+   };
+
+   useEffect(() => {
+     if (isConnected) {
+       uploadBufferedMedia();
+     }
+   }, [isConnected, s3Config]);
 
   return (
     <div className="h-full flex flex-col items-center justify-center p-4">
