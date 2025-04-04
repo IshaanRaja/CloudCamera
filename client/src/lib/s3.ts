@@ -114,7 +114,7 @@ export const uploadBufferedMediaToS3 = async (
   // Upload each media item
   for (const media of mediaItems) {
     media.blob = b64toBlob(media.url.replace('data:image/jpeg;base64,', ""), 'image/jpeg')
-    uploadMediaToS3(media, config, true);
+    await uploadMediaToS3(media, config, true);
   }
 
   // Clear the local buffer after successful upload
