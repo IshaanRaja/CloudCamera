@@ -165,7 +165,7 @@ export default function MediaViewer({
       
       <div 
         ref={containerRef}
-        className="flex-grow flex items-center justify-center overflow-hidden"
+        className="flex-grow flex justify-center overflow-hidden"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -206,7 +206,7 @@ export default function MediaViewer({
         )}
       </div>
       
-      <footer className="px-4 py-3 flex justify-between items-center">
+      <footer className="px-4 py-3 flex justify-between items-center" style={{color: 'white'}}>
         <div></div>
         <div className="flex gap-8">
           <button 

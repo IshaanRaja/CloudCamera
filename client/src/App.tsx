@@ -11,7 +11,7 @@ import MediaViewer from "@/components/MediaViewer";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import ToastMessage from "@/components/ToastMessage";
 import { loadS3Config, saveS3Config } from "@/lib/storage";
-import { getMediaList } from "@/lib/s3";
+import { getMediaList, deleteMediaFromS3 } from "@/lib/s3";
 import { MediaItem, S3Config } from "@/lib/types";
 
 function App() {
@@ -168,7 +168,7 @@ function App() {
   const handleDeleteMedia = (media: MediaItem) => {
     setConfirmMessage("Are you sure you want to delete this item? This action cannot be undone.");
     setConfirmAction(() => async () => {
-      // TODO: Implement delete logic using S3 client
+      await deleteMediaFromS3(media, s3Config); 
       setMediaItems(mediaItems.filter(item => item.key !== media.key));
       setSelectedMedia(null);
       toast({
