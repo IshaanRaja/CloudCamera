@@ -165,7 +165,7 @@ export default function MediaViewer({
       
       <div 
         ref={containerRef}
-        className="flex-grow flex justify-center overflow-hidden"
+        className="flex-grow flex items-center justify-center overflow-hidden"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
