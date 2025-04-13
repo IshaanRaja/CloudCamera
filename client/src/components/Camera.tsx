@@ -81,7 +81,7 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
       <input
         type="file"
         accept={cameraMode === "photo" ? "image/*" : "video/*"}
-        capture={cameraMode === "photo" ? "environment" : "user"}
+        capture="environment"
         className="hidden"
         id="cameraInput"
         onChange={handleCapture}

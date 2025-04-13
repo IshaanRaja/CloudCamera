@@ -159,7 +159,7 @@ export const getMediaList = async (config: S3Config): Promise<MediaItem[]> => {
         thumbnail = `${config.endpoint}/${config.bucket}/${thumbnails[keyWithoutExt]}`;
       }
 
-      const isVideo = obj.Key.endsWith(".webm") || obj.Key.endsWith(".mp4");
+      const isVideo = obj.Key.startsWith("video");
 
       return {
         key: obj.Key,
