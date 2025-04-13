@@ -1,109 +1,100 @@
 import { MediaItem, S3Config } from "./types";
 
-// LocalStorage keys
+// LocalStorage key for S3 config (still safe to store here)
 const S3_CONFIG_KEY = 'cloud-camera-s3-config';
-const MEDIA_BUFFER_KEY = 'cloud-camera-media-buffer';
 
-// Save S3 configuration to localStorage
+// Save/load S3 config in localStorage
 export const saveS3Config = (config: S3Config): void => {
   localStorage.setItem(S3_CONFIG_KEY, JSON.stringify(config));
 };
 
-// Load S3 configuration from localStorage
 export const loadS3Config = (): S3Config | null => {
   const config = localStorage.getItem(S3_CONFIG_KEY);
   return config ? JSON.parse(config) : null;
 };
 
-// Save media item to local buffer for later upload
-export const saveMediaToLocalBuffer = (media: MediaItem): void => {
-  // Load existing buffer
-  const existingBuffer = getBufferedMedia();
+// Open or upgrade IndexedDB
+const openDB = (): Promise<IDBDatabase> => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('CloudCameraDB', 1);
     
-  // Add new media to buffer
-  existingBuffer.push(media);
-  
-  // Store updated buffer
-  localStorage.setItem(MEDIA_BUFFER_KEY, JSON.stringify(existingBuffer));
+    request.onerror = () => reject(new Error('Failed to open IndexedDB'));
+
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains('mediaBlobs')) {
+        db.createObjectStore('mediaBlobs', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('mediaBuffer')) {
+        db.createObjectStore('mediaBuffer', { keyPath: 'key' });
+      }
+    };
+
+    request.onsuccess = () => resolve(request.result);
+  });
 };
 
-// Get all media items from local buffer
-export const getBufferedMedia = (): MediaItem[] => {
-  try {
-    const buffer = localStorage.getItem(MEDIA_BUFFER_KEY);
-    return buffer ? JSON.parse(buffer) : [];
-  } catch (error) {
-    console.error("Error loading media buffer:", error);
-    return [];
-  }
+// Save media item to buffer
+export const saveMediaToLocalBuffer = async (media: MediaItem): Promise<void> => {
+  const db = await openDB();
+  const tx = db.transaction('mediaBuffer', 'readwrite');
+  const store = tx.objectStore('mediaBuffer');
+  store.put(media);
+  await tx.complete;
 };
 
-// Clear the local buffer after successful upload
-export const clearLocalBuffer = (): void => {
-  localStorage.removeItem(MEDIA_BUFFER_KEY);
+// Get all buffered media items
+export const getBufferedMedia = async (): Promise<MediaItem[]> => {
+  const db = await openDB();
+  const tx = db.transaction('mediaBuffer', 'readonly');
+  const store = tx.objectStore('mediaBuffer');
+
+  return new Promise((resolve, reject) => {
+    const request = store.getAll();
+    request.onsuccess = () => resolve(request.result as MediaItem[]);
+    request.onerror = () => reject(new Error("Failed to read media buffer"));
+  });
 };
 
-// Remove a specific media item from the buffer
-export const removeFromLocalBuffer = (key: string): void => {
-  const buffer = getBufferedMedia();
-  const updatedBuffer = buffer.filter(item => item.key !== key);
-  localStorage.setItem(MEDIA_BUFFER_KEY, JSON.stringify(updatedBuffer));
+// Remove all items from buffer
+export const clearLocalBuffer = async (): Promise<void> => {
+  const db = await openDB();
+  const tx = db.transaction('mediaBuffer', 'readwrite');
+  const store = tx.objectStore('mediaBuffer');
+  store.clear();
+  await tx.complete;
 };
 
-// Using IndexedDB for larger blob storage
+// Remove one item by key
+export const removeFromLocalBuffer = async (key: string): Promise<void> => {
+  const db = await openDB();
+  const tx = db.transaction('mediaBuffer', 'readwrite');
+  const store = tx.objectStore('mediaBuffer');
+  store.delete(key);
+  await tx.complete;
+};
+
+// Blob storage
 export const storeMediaBlob = async (key: string, blob: Blob): Promise<void> => {
+  const db = await openDB();
+  const tx = db.transaction('mediaBlobs', 'readwrite');
+  const store = tx.objectStore('mediaBlobs');
+  store.put({ id: key, blob });
+  await tx.complete;
+};
+
+export const getMediaBlob = async (key: string): Promise<Blob | null> => {
+  const db = await openDB();
+  const tx = db.transaction('mediaBlobs', 'readonly');
+  const store = tx.objectStore('mediaBlobs');
+
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('CloudCameraDB', 1);
-    
-    request.onerror = () => reject(new Error('Failed to open IndexedDB'));
-    
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains('mediaBlobs')) {
-        db.createObjectStore('mediaBlobs', { keyPath: 'id' });
-      }
+    const request = store.get(key);
+    request.onsuccess = () => {
+      const data = request.result;
+      resolve(data ? data.blob : null);
     };
-    
-    request.onsuccess = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      const transaction = db.transaction(['mediaBlobs'], 'readwrite');
-      const store = transaction.objectStore('mediaBlobs');
-      
-      const storeRequest = store.put({ id: key, blob });
-      
-      storeRequest.onsuccess = () => resolve();
-      storeRequest.onerror = () => reject(new Error('Failed to store blob in IndexedDB'));
-    };
+    request.onerror = () => reject(new Error('Failed to retrieve blob from IndexedDB'));
   });
 };
 
-// Retrieve a media blob from IndexedDB
-export const getMediaBlob = async (key: string): Promise<Blob | null> => {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open('CloudCameraDB', 1);
-    
-    request.onerror = () => reject(new Error('Failed to open IndexedDB'));
-    
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains('mediaBlobs')) {
-        db.createObjectStore('mediaBlobs', { keyPath: 'id' });
-      }
-    };
-    
-    request.onsuccess = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      const transaction = db.transaction(['mediaBlobs'], 'readonly');
-      const store = transaction.objectStore('mediaBlobs');
-      
-      const getRequest = store.get(key);
-      
-      getRequest.onsuccess = () => {
-        const data = getRequest.result;
-        resolve(data ? data.blob : null);
-      };
-      
-      getRequest.onerror = () => reject(new Error('Failed to retrieve blob from IndexedDB'));
-    };
-  });
-};

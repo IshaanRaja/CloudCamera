@@ -77,26 +77,6 @@ export const uploadMediaToS3 = async (
   );
 };
 
-const b64toBlob = (b64Data, contentType='', sliceSize=512) => {
-  const byteCharacters = atob(b64Data);
-  const byteArrays = [];
-
-  for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
-    const slice = byteCharacters.slice(offset, offset + sliceSize);
-
-    const byteNumbers = new Array(slice.length);
-    for (let i = 0; i < slice.length; i++) {
-      byteNumbers[i] = slice.charCodeAt(i);
-    }
-
-    const byteArray = new Uint8Array(byteNumbers);
-    byteArrays.push(byteArray);
-  }
-
-  const blob = new Blob(byteArrays, {type: contentType});
-  return blob;
-}
-
 // Upload buffered media to S3 and clear the buffer
 export const uploadBufferedMediaToS3 = async (
   mediaItems: MediaItem[],
@@ -113,12 +93,11 @@ export const uploadBufferedMediaToS3 = async (
 
   // Upload each media item
   for (const media of mediaItems) {
-    media.blob = b64toBlob(media.url.replace('data:image/jpeg;base64,', ""), 'image/jpeg')
-    await uploadMediaToS3(media, config, true);
+    await uploadMediaToS3(media, config);
   }
 
   // Clear the local buffer after successful upload
-  clearLocalBuffer();
+  await clearLocalBuffer();
 };
 
 // Get a list of media items from S3

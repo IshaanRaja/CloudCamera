@@ -35,7 +35,6 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
       type: file.type,
       size: file.size,
       date: now.toISOString(),
-      url: base64String,
       blob: file,
     };
 
@@ -45,12 +44,12 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
         await uploadMediaToS3(mediaItem, s3Config);
       } catch (error) {
         console.error("Failed to upload to S3:", error);
-        saveMediaToLocalBuffer(mediaItem);
+        await saveMediaToLocalBuffer(mediaItem);
         onAddPendingUpload(mediaItem);
         showErrorToast("Media will be uploaded when connection is available");
       }
     } else {
-      saveMediaToLocalBuffer(mediaItem);
+      await saveMediaToLocalBuffer(mediaItem);
       onAddPendingUpload(mediaItem);
       showErrorToast("Media saved locally. Will upload when connected.");
     }
@@ -61,7 +60,7 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
      if (!isConnected || !s3Config.bucket) return;
 
      try {
-       const bufferedMedia = getBufferedMedia();
+       const bufferedMedia = await getBufferedMedia();
        if (bufferedMedia.length > 0) {
          await uploadBufferedMediaToS3(bufferedMedia, s3Config);
        }
