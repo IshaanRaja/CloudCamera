@@ -75,6 +75,7 @@ function App() {
     setIsLoading(true);
     try {
       const items = await getMediaList(config);
+      items.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setMediaItems(items);
       setS3Connected(true);
     } catch (error) {

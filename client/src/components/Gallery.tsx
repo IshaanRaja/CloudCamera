@@ -57,10 +57,7 @@ export default function Gallery({ mediaItems, isLoading, isConnected, onSelectMe
   const [sortedItems, setSortedItems] = useState<MediaItem[]>([]);
 
   useEffect(() => {
-    const sorted = [...mediaItems].sort((a, b) => {
-      return new Date(b.date).getTime() - new Date(a.date).getTime();
-    });
-    setSortedItems(sorted);
+   setSortedItems(mediaItems);
   }, [mediaItems]);
 
   return (
