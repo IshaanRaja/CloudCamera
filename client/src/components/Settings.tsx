@@ -29,6 +29,7 @@ export default function Settings({
     // Validate form fields
     if (!config.endpoint.trim() || 
         !config.bucket.trim() || 
+        !config.region.trim() ||
         !config.accessKey.trim() || 
         !config.secretKey.trim()) {
       alert("Please fill all S3 configuration fields");
@@ -71,6 +72,18 @@ export default function Settings({
           </div>
           
           <div className="space-y-1">
+            <label className="text-sm font-medium">Bucket Region</label>
+            <input 
+              type="text" 
+              name="region"
+              placeholder="Region" 
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-800"
+              value={config.region}
+              onChange={handleChange}
+            />
+          </div>
+         
+          <div className="space-y-1">
             <label className="text-sm font-medium">Access Key</label>
             <input 
               type="text" 
@@ -81,7 +94,7 @@ export default function Settings({
               onChange={handleChange}
             />
           </div>
-          
+
           <div className="space-y-1">
             <label className="text-sm font-medium">Secret Key</label>
             <input 

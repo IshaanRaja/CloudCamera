@@ -2,6 +2,7 @@
 export interface S3Config {
   endpoint: string;
   bucket: string;
+  region: string;
   accessKey: string;
   secretKey: string;
 }

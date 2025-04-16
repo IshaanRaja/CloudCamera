@@ -22,6 +22,7 @@ function App() {
   const [s3Config, setS3Config] = useState<S3Config>({
     endpoint: "",
     bucket: "",
+    region: "",
     accessKey: "",
     secretKey: ""
   });
@@ -69,6 +70,7 @@ function App() {
     // Check for empty values (with trimming to remove whitespace)
     if (!config.endpoint.trim() || 
         !config.bucket.trim() || 
+        !config.region.trim() || 
         !config.accessKey.trim() || 
         !config.secretKey.trim()) return;
     
@@ -110,6 +112,7 @@ function App() {
     // Validate the configuration
     if (!config.endpoint.trim() || 
         !config.bucket.trim() || 
+        !config.region.trim() ||
         !config.accessKey.trim() || 
         !config.secretKey.trim()) {
       showErrorToast("Please fill all S3 configuration fields");
@@ -131,6 +134,7 @@ function App() {
     console.log("S3 Config:", {
       endpoint: s3Config.endpoint,
       bucket: s3Config.bucket,
+      region: s3Config.region,
       accessKey: s3Config.accessKey,
       secretKey: s3Config.secretKey ? "***" : "" // Don't log actual secret
     });
@@ -138,6 +142,7 @@ function App() {
     // Check for empty values (with trimming to remove whitespace)
     if (!s3Config.endpoint.trim() || 
         !s3Config.bucket.trim() || 
+        !s3Config.region.trim() ||
         !s3Config.accessKey.trim() || 
         !s3Config.secretKey.trim()) {
       showErrorToast("Please fill all S3 configuration fields");

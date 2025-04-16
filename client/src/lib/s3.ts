@@ -13,7 +13,7 @@ import { clearLocalBuffer } from "./storage";
 const createS3Client = (config: S3Config): S3Client => {
   return new S3Client({
     endpoint: config.endpoint,
-    region: "us-sanjose-1", // S3 compatible services typically use 'auto' or a specific region
+    region: config.region, 
     requestChecksumCalculation: "WHEN_REQUIRED",
     credentials: {
       accessKeyId: config.accessKey,
@@ -31,6 +31,7 @@ export const uploadMediaToS3 = async (
   if (
     !config.endpoint.trim() ||
     !config.bucket.trim() ||
+    !config.region.trim() ||
     !config.accessKey.trim() ||
     !config.secretKey.trim()
   ) {
@@ -85,6 +86,7 @@ export const uploadBufferedMediaToS3 = async (
   if (
     !config.endpoint.trim() ||
     !config.bucket.trim() ||
+    !config.region.trim() ||
     !config.accessKey.trim() ||
     !config.secretKey.trim()
   ) {
@@ -105,6 +107,7 @@ export const getMediaList = async (config: S3Config): Promise<MediaItem[]> => {
   if (
     !config.endpoint.trim() ||
     !config.bucket.trim() ||
+    !config.region.trim() ||
     !config.accessKey.trim() ||
     !config.secretKey.trim()
   ) {
@@ -184,6 +187,7 @@ export const deleteMediaFromS3 = async (
   if (
     !config.endpoint.trim() ||
     !config.bucket.trim() ||
+    !config.region.trim() ||
     !config.accessKey.trim() ||
     !config.secretKey.trim()
   ) {
