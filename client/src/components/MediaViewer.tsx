@@ -30,7 +30,7 @@ export default function MediaViewer({
   
   // Format date for display
   const formattedDate = media.date 
-    ? format(new Date(media.date), "MMMM d, yyyy")
+    ? format(new Date(media.date), "MMMM d, yyyy hh:mmaaaaa'm'")
     : "";
 
   // Reset scale and position when media changes
