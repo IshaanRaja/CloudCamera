@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { uploadMediaToS3, uploadBufferedMediaToS3 } from "@/lib/s3";
 import { saveMediaToLocalBuffer, getBufferedMedia } from "@/lib/storage";
 import { MediaItem, S3Config } from "@/lib/types";
@@ -11,52 +11,23 @@ interface CameraProps {
 }
 
 export default function Camera({ isConnected, s3Config, onAddPendingUpload, showErrorToast }: CameraProps) {
-  const [lastThumbnail, setLastThumbnail] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const [cameraMode, setCameraMode] = useState<"photo" | "video">("photo");
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [useFrontCamera, setUseFrontCamera] = useState(false);
+  const [flashOn, setFlashOn] = useState(false);
+  const [zoom, setZoom] = useState(1);
 
-  // Handle media capture from input
-  const handleCapture = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    
-    const base64String: string = await new Promise((resolve) => {
-      reader.onloadend = () => resolve(reader.result as string);
-    });
-    
-    setLastThumbnail(base64String);
-    
-    const now = new Date();
-    const filename = `${cameraMode}_${now.getTime()}.${file.type.split("/")[1]}`;
-    const mediaItem: MediaItem = {
-      key: filename,
-      type: file.type,
-      size: file.size,
-      date: now.toISOString(),
-      blob: file,
+  useEffect(() => {
+    initCamera();
+    return () => {
+      stream?.getTracks().forEach((track) => track.stop());
     };
+  }, [useFrontCamera, flashOn, cameraMode]);
 
-    // Upload if connected, otherwise store locally
-    if (isConnected && s3Config.bucket) {
-      try {
-        await uploadMediaToS3(mediaItem, s3Config);
-      } catch (error) {
-        console.error("Failed to upload to S3:", error);
-        await saveMediaToLocalBuffer(mediaItem);
-        onAddPendingUpload(mediaItem);
-        showErrorToast("Media will be uploaded when connection is available");
-      }
-    } else {
-      await saveMediaToLocalBuffer(mediaItem);
-      onAddPendingUpload(mediaItem);
-      showErrorToast("Media saved locally. Will upload when connected.");
-    }
-  };
-
-   // Upload any media that was saved when offline
-   const uploadBufferedMedia = async () => {
+  const uploadBufferedMedia = async () => {
      if (!isConnected || !s3Config.bucket) return;
 
      try {
@@ -75,31 +46,172 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
        uploadBufferedMedia();
      }
    }, [isConnected, s3Config]);
+  
+  const initCamera = async () => {
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+    }
+
+    try {
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: useFrontCamera ? "user" : "environment",
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          zoom: true,
+        },
+        audio: cameraMode === "video",
+      });
+
+      const videoTrack = newStream.getVideoTracks()[0];
+      const capabilities = videoTrack.getCapabilities();
+      if (capabilities.torch && flashOn) {
+        try {
+          await videoTrack.applyConstraints({ advanced: [{ torch: true }] });
+        } catch (err) {
+          console.warn("Torch not supported");
+        }
+      }
+
+      setStream(newStream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = newStream;
+      }
+    } catch (error) {
+      showErrorToast("Camera access failed");
+      console.error(error);
+    }
+  };
+
+  const handleCapture = async () => {
+    if (!videoRef.current) return;
+
+    const canvas = document.createElement("canvas");
+    const video = videoRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (ctx) ctx.drawImage(video, 0, 0);
+
+    canvas.toBlob(async (blob) => {
+      if (!blob) return;
+
+      const now = new Date();
+      const mediaItem: MediaItem = {
+        key: `photo_${now.getTime()}.jpeg`,
+        type: "image/jpeg",
+        size: blob.size,
+        date: now.toISOString(),
+        blob,
+      };
+
+      await handleMediaSave(mediaItem);
+    }, "image/jpeg", 1);
+  };
+
+  const handleRecord = () => {
+    if (isRecording) {
+      mediaRecorderRef.current?.stop();
+      setIsRecording(false);
+    } else if (stream) {
+      const recorder = new MediaRecorder(stream, {mimeType: 'video/mp4'});
+      const chunks: Blob[] = [];
+
+      recorder.ondataavailable = (e) => chunks.push(e.data);
+      recorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: "video/mp4" });
+        const now = new Date();
+        const mediaItem: MediaItem = {
+          key: `video_${now.getTime()}.mp4`,
+          type: "video/mp4",
+          size: blob.size,
+          date: now.toISOString(),
+          blob,
+        };
+
+        await handleMediaSave(mediaItem);
+      };
+
+      recorder.start();
+      mediaRecorderRef.current = recorder;
+      setIsRecording(true);
+    }
+  };
+
+  const handleMediaSave = async (mediaItem: MediaItem) => {
+    try {
+      if (isConnected && s3Config.bucket) {
+        await uploadMediaToS3(mediaItem, s3Config);
+      } else {
+        throw new Error("Offline or no config");
+      }
+    } catch {
+      await saveMediaToLocalBuffer(mediaItem);
+      onAddPendingUpload(mediaItem);
+      showErrorToast("Media saved locally. Will upload when connected.");
+    }
+  };
+
+  const handleZoom = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 2) {
+      const [touch1, touch2] = e.touches;
+      const dist = Math.hypot(touch1.pageX - touch2.pageX, touch1.pageY - touch2.pageY);
+      const scale = Math.min(Math.max(dist / 200, 1), 3);
+      setZoom(scale);
+
+      const videoTrack = stream?.getVideoTracks()[0];
+      if (videoTrack?.getCapabilities().zoom) {
+        videoTrack.applyConstraints({ advanced: [{ zoom: scale }] });
+      }
+    }
+  };
 
   return (
-    <div className="h-full flex flex-col items-center justify-center p-4">
-      <input
-        type="file"
-        accept={cameraMode === "photo" ? "image/*" : "video/*"}
-        capture="environment"
-        className="hidden"
-        id="cameraInput"
-        onChange={handleCapture}
+    <div
+      className="relative w-full h-full bg-black overflow-hidden touch-none"
+      onTouchMove={handleZoom}
+    >
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className="absolute w-full h-full object-cover"
+        style={{ transform: `scale(${zoom})` }}
       />
-      
-      <label htmlFor="cameraInput" className="cursor-pointer w-20 h-20 rounded-full border-4 border-white flex items-center justify-center mb-4 bg-gray-200">
-        {cameraMode === "photo" ? "📷" : "🎥"}
-      </label>
+      <div className="absolute bottom-0 w-full flex flex-col items-center justify-center p-4 space-y-2 bg-gradient-to-t from-black via-black/30 to-transparent">
+        <div className="flex justify-between w-full px-6 text-white text-sm">
+          <button onClick={() => setFlashOn(!flashOn)}>
+            {flashOn ? "Flash On" : "Flash Off"}
+          </button>
+          <button onClick={() => setUseFrontCamera(!useFrontCamera)}>
+            {useFrontCamera ? "Rear Cam" : "Front Cam"}
+          </button>
+        </div>
 
-      {lastThumbnail && <img src={lastThumbnail} alt="Last Capture" className="w-24 h-24 rounded-md border" />}
+        <div className="flex items-center justify-center space-x-6">
+          <button
+            className="w-16 h-16 bg-white rounded-full"
+            onClick={cameraMode === "photo" ? handleCapture : handleRecord}
+          >
+            {cameraMode === "photo" ? "📸" : isRecording ? "⏹️" : "🔴"}
+          </button>
+        </div>
 
-      <div className="flex gap-3 mt-4">
-        <button className={`px-4 py-2 rounded ${cameraMode === "photo" ? "bg-blue-500 text-white" : "bg-gray-300"}`} onClick={() => setCameraMode("photo")}>
-          Photo
-        </button>
-        <button className={`px-4 py-2 rounded ${cameraMode === "video" ? "bg-blue-500 text-white" : "bg-gray-300"}`} onClick={() => setCameraMode("video")}>
-          Video
-        </button>
+        <div className="flex space-x-4 mt-2 text-white text-xs">
+          <button
+            onClick={() => setCameraMode("photo")}
+            className={cameraMode === "photo" ? "font-bold underline" : ""}
+          >
+            PHOTO
+          </button>
+          <button
+            onClick={() => setCameraMode("video")}
+            className={cameraMode === "video" ? "font-bold underline" : ""}
+          >
+            VIDEO
+          </button>
+        </div>
       </div>
     </div>
   );
