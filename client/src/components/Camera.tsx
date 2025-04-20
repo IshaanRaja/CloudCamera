@@ -25,7 +25,7 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
     return () => {
       stream?.getTracks().forEach((track) => track.stop());
     };
-  }, [useFrontCamera, flashOn, cameraMode]);
+  }, [useFrontCamera, flashOn]);
 
   const uploadBufferedMedia = async () => {
      if (!isConnected || !s3Config.bucket) return;
@@ -60,7 +60,7 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
           height: { ideal: 1080 },
           zoom: true,
         },
-        audio: cameraMode === "video",
+        audio: true,
       });
 
       const videoTrack = newStream.getVideoTracks()[0];
