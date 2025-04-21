@@ -19,6 +19,7 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
   const [useFrontCamera, setUseFrontCamera] = useState(false);
   const [flashOn, setFlashOn] = useState(false);
   const [zoom, setZoom] = useState(1);
+  const [photoTaken, setPhotoTaken] = useState(false);
 
   useEffect(() => {
     initCamera();
@@ -85,6 +86,9 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
 
   const handleCapture = async () => {
     if (!videoRef.current) return;
+
+    setPhotoTaken(true);
+    setTimeout(() => setPhotoTaken(false), 500);
 
     const canvas = document.createElement("canvas");
     const video = videoRef.current;
@@ -191,7 +195,9 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
 
         <div className="flex items-center justify-center space-x-6">
           <button
-            className="w-16 h-16 bg-white rounded-full"
+            className={`w-16 h-16 rounded-full transition duration-500 ${
+            cameraMode === "photo" && photoTaken ? "bg-neutral-500 scale-95 brightness-90" : "bg-white"
+            }`}
             onClick={cameraMode === "photo" ? handleCapture : handleRecord}
           >
             {cameraMode === "photo" ? "📸" : isRecording ? "⏹️" : "🔴"}
