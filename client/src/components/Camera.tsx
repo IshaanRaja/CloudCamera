@@ -189,7 +189,7 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
             {flashOn ? "Flash On" : "Flash Off"}
           </button>
           <button onClick={() => setUseFrontCamera(!useFrontCamera)}>
-            {useFrontCamera ? "Rear Cam" : "Front Cam"}
+            {useFrontCamera ? "Front Cam" : "Rear Cam"}
           </button>
         </div>
 
