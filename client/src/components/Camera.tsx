@@ -157,15 +157,29 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
   };
 
   const handleZoom = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (e.touches.length === 2) {
+     const videoTrack = stream?.getVideoTracks()[0];
+     if (!videoTrack) {
+       return;
+     }
+     if (e.touches.length === 2) {
       const [touch1, touch2] = e.touches;
       const dist = Math.hypot(touch1.pageX - touch2.pageX, touch1.pageY - touch2.pageY);
       const scale = Math.min(Math.max(dist / 200, 1), 3);
-      setZoom(scale);
+      
+      const capabilities = videoTrack.getCapabilities();
+      if(!capabilities.zoom) {
+          return;
+      }
+      
+      const settings = videoTrack.getSettings();
+      
+      const min = capabilities.zoom?.min ?? 1;
+      const max = capabilities.zoom?.max ?? 3;
+      const clampedZoom = Math.min(Math.max(scale, min), max);
 
-      const videoTrack = stream?.getVideoTracks()[0];
-      if (videoTrack?.getCapabilities().zoom) {
-        videoTrack.applyConstraints({ advanced: [{ zoom: scale }] });
+      if (clampedZoom !== settings.zoom && videoTrack?.readyState == "live") {
+        setZoom(clampedZoom);
+        videoTrack.applyConstraints({ advanced: [{ zoom: clamedZoom }] });
       }
     }
   };
