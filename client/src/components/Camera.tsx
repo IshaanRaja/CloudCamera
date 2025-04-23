@@ -179,7 +179,7 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
 
       if (clampedZoom !== settings.zoom && videoTrack?.readyState == "live") {
         setZoom(clampedZoom);
-        videoTrack.applyConstraints({ advanced: [{ zoom: clamedZoom }] });
+        videoTrack.applyConstraints({ advanced: [{ zoom: clampedZoom }] });
       }
     }
   };
