@@ -156,7 +156,7 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
     }
   };
 
-  const handleZoom = async (e: React.TouchEvent<HTMLDivElement>) => {
+  const handleZoom = (e: React.TouchEvent<HTMLDivElement>) => {
      const videoTrack = stream?.getVideoTracks()[0];
      if (!videoTrack) {
        return;
@@ -179,7 +179,7 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
 
       if (clampedZoom !== settings.zoom && videoTrack?.readyState == "live") {
         setZoom(clampedZoom);
-        await videoTrack.applyConstraints({ advanced: [{ zoom: clampedZoom }] });
+        videoTrack.applyConstraints({ advanced: [{ zoom: clampedZoom }] });
       }
     }
   };
