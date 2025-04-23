@@ -156,7 +156,7 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
     }
   };
 
-  const handleZoom = (e: React.TouchEvent<HTMLDivElement>) => {
+  const handleZoom = async (e: React.TouchEvent<HTMLDivElement>) => {
      const videoTrack = stream?.getVideoTracks()[0];
      if (!videoTrack) {
        return;
