@@ -20,6 +20,8 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
   const [flashOn, setFlashOn] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [photoTaken, setPhotoTaken] = useState(false);
+  const debounceTimeoutRef = useRef<number | null>(null);
+  const lastAppliedZoomRef = useRef<number>(zoom);
 
   useEffect(() => {
     initCamera();
@@ -157,31 +159,41 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
   };
 
   const handleZoom = (e: React.TouchEvent<HTMLDivElement>) => {
-     const videoTrack = stream?.getVideoTracks()[0];
-     if (!videoTrack) {
-       return;
-     }
-     if (e.touches.length === 2) {
+      const videoTrack = stream?.getVideoTracks()[0];
+      if (!videoTrack || e.touches.length !== 2) return;
+
       const [touch1, touch2] = e.touches;
       const dist = Math.hypot(touch1.pageX - touch2.pageX, touch1.pageY - touch2.pageY);
       const scale = Math.min(Math.max(dist / 200, 1), 3);
-      
+
       const capabilities = videoTrack.getCapabilities();
-      if(!capabilities.zoom) {
-          return;
-      }
-      
-      const settings = videoTrack.getSettings();
-      
-      const min = capabilities.zoom?.min ?? 1;
-      const max = capabilities.zoom?.max ?? 3;
+      if (!capabilities.zoom) return;
+
+      const min = capabilities.zoom.min ?? 1;
+      const max = capabilities.zoom.max ?? 3;
       const clampedZoom = Math.min(Math.max(scale, min), max);
 
-      if (clampedZoom !== settings.zoom && videoTrack?.readyState == "live") {
-        setZoom(clampedZoom);
-        videoTrack.applyConstraints({ advanced: [{ zoom: clampedZoom }] });
+      // Update local state immediately for UI feedback
+      setZoom(clampedZoom);
+
+      // Debounce the actual hardware zoom
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
       }
-    }
+
+      debounceTimeoutRef.current = window.setTimeout(() => {
+        // Only apply if zoom has meaningfully changed
+        if (Math.abs(lastAppliedZoomRef.current - clampedZoom) >= 0.05) {
+          videoTrack
+            .applyConstraints({ zoom: clampedZoom })
+            .then(() => {
+              lastAppliedZoomRef.current = clampedZoom;
+            })
+            .catch((err) => {
+              console.warn("Zoom applyConstraints failed", err);
+            });
+        }
+      }, 150); // Adjust delay as needed
   };
 
   return (
