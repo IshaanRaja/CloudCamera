@@ -138,7 +138,7 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
         await handleMediaSave(mediaItem);
       };
 
-      recorder.start();
+      recorder.start(1000);
       mediaRecorderRef.current = recorder;
       setIsRecording(true);
     }
