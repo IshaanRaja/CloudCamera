@@ -190,11 +190,11 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
       onTouchMove={handleZoom}
     >
       <video
-        ref={videoRef}
         autoPlay
         playsInline
-        muted
-        className="absolute w-full h-full object-cover"
+        muted 
+        ref={videoRef}
+	className="absolute w-full h-full object-cover"
       />
       <div className="absolute bottom-0 w-full flex flex-col items-center justify-center p-4 space-y-2 bg-gradient-to-t from-black via-black/30 to-transparent">
         <div className="flex justify-between w-full px-6 text-white text-sm">
