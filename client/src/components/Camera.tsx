@@ -25,19 +25,6 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
   const lastAppliedZoomRef = useRef<number>(zoom);
 
   useEffect(() => {
-    async function fetchDevices() {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoInputs = devices.filter((d) => d.kind === "videoinput");
-      setVideoDevices(videoInputs);
-      if (!selectedDeviceId && videoInputs.length > 0) {
-        setSelectedDeviceId(videoInputs[0].deviceId);
-      }
-    }
-
-    fetchDevices();
-  }, []);
-
-  useEffect(() => {
     initCamera();
     return () => {
       stream?.getTracks().forEach((track) => track.stop());
@@ -63,6 +50,15 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
       uploadBufferedMedia();
     }
   }, [isConnected, s3Config]);
+ 
+  const fetchDevices = async () => {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoInputs = devices.filter((d) => d.kind === "videoinput");
+      setVideoDevices(videoInputs);
+      if (!selectedDeviceId && videoInputs.length > 0) {
+        setSelectedDeviceId(videoInputs[0].deviceId);
+      }
+  }
 
   const initCamera = async () => {
     if (stream) {
@@ -94,6 +90,7 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
       if (videoRef.current) {
         videoRef.current.srcObject = newStream;
       }
+      fetchDevices();
     } catch (error) {
       showErrorToast("Camera access failed");
       console.error(error);
