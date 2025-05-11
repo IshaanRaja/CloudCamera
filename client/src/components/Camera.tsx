@@ -59,8 +59,8 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
       const newStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: useFrontCamera ? "user" : "environment",
-          width: { ideal: 99999 },
-          height: { ideal: 99999 },
+          width: { ideal: 4032 },
+          height: { ideal: 3024 },
           zoom: true,
         },
         audio: true,
