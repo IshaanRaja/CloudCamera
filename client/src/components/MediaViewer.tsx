@@ -124,6 +124,8 @@ export default function MediaViewer({
               className="max-h-full max-w-full"
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
+              height="1920px"
+              width="1080px"
             />
             {!isPlaying && (
               <div 
