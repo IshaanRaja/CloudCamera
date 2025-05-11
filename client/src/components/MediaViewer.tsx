@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { format } from "date-fns";
 import { MediaItem } from "@/lib/types";
+import { PhotoProvider, PhotoView } from "react-photo-view";
+import "react-photo-view/dist/react-photo-view.css";
 
 interface MediaViewerProps {
   media: MediaItem;
@@ -171,39 +173,26 @@ export default function MediaViewer({
         onTouchEnd={handleTouchEnd}
         onDoubleClick={handleDoubleTap}
       >
-        {media.type.startsWith('image/') ? (
-          <img 
-            src={media.url} 
-            alt="Media" 
-            className="max-h-full max-w-full object-contain"
-            style={{
-              transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
-              transformOrigin: 'center',
-              transition: isPanning ? 'none' : 'transform 0.2s'
-            }}
-          />
-        ) : (
-          <div className="relative w-full h-full flex items-center justify-center">
-            <video 
-              ref={videoRef}
-              src={media.url} 
-              controls={isPlaying}
-              className="max-h-full max-w-full"
-              onPlay={() => setIsPlaying(true)}
-              onPause={() => setIsPlaying(false)}
-            />
-            {!isPlaying && (
-              <div 
-                className="absolute inset-0 flex items-center justify-center"
-                onClick={togglePlayback}
-              >
-                <button className="w-16 h-16 rounded-full bg-black/50 flex items-center justify-center text-white">
-                  <i className="fas fa-play"></i>
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+        <PhotoProvider>
+          {media.type.startsWith("image/") ? (
+            <PhotoView src={media.url}>
+              <img
+                src={media.url}
+                alt="Media"
+                className="max-h-full max-w-full object-contain cursor-zoom-in"
+              />
+            </PhotoView>
+          ) : (
+            <div className="relative">
+              <video
+                src={media.url}
+                controls
+                autoPlay
+                className="max-h-full max-w-full rounded-md"
+              />
+            </div>
+          )}
+        </PhotoProvider> 
       </div>
       
       <footer className="px-4 py-3 flex justify-between items-center" style={{color: 'white'}}>
