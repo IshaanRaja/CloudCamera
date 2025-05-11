@@ -29,7 +29,7 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
     return () => {
       stream?.getTracks().forEach((track) => track.stop());
     };
-  }, [selectedDeviceId, flashOn]);
+  }, [selectedDeviceId, flashOn, cameraMode]);
 
   const uploadBufferedMedia = async () => {
     if (!isConnected || !s3Config.bucket) return;
@@ -69,8 +69,8 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
       const newStream = await navigator.mediaDevices.getUserMedia({
         video: {
           deviceId: selectedDeviceId ? { exact: selectedDeviceId }: undefined,
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
+          width: { ideal: cameraMode == "photo" ? 9999: 1920 },
+          height: { ideal: cameraMode == "photo" ? 9999: 1080 },
           zoom: true,
         },
         audio: true,
