@@ -69,8 +69,8 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
       const newStream = await navigator.mediaDevices.getUserMedia({
         video: {
           deviceId: selectedDeviceId ? { exact: selectedDeviceId }: undefined,
-          width: { ideal: 9999 },
-          height: { ideal: 9999 },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
           zoom: true,
         },
         audio: true,
