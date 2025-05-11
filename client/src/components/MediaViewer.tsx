@@ -21,10 +21,6 @@ export default function MediaViewer({
   onNext, 
   onPrev 
 }: MediaViewerProps) {
-  const [scale, setScale] = useState<number>(1);
-  const [isPanning, setIsPanning] = useState<boolean>(false);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   
   const containerRef = useRef<HTMLDivElement>(null);
@@ -35,10 +31,7 @@ export default function MediaViewer({
     ? format(new Date(media.date), "MMMM d, yyyy hh:mmaaaaa'm'")
     : "";
 
-  // Reset scale and position when media changes
   useEffect(() => {
-    setScale(1);
-    setPosition({ x: 0, y: 0 });
     setIsPlaying(false);
   }, [media]);
 
@@ -55,9 +48,7 @@ export default function MediaViewer({
       startTime = Date.now();
     };
     
-    const handleTouchEnd = (e: TouchEvent) => {
-      if (scale > 1) return; // Don't swipe if zoomed in
-      
+    const handleTouchEnd = (e: TouchEvent) => { 
       const endX = e.changedTouches[0].clientX;
       const diffX = endX - startX;
       const diffTime = Date.now() - startTime;
@@ -79,64 +70,7 @@ export default function MediaViewer({
       container.removeEventListener('touchstart', handleTouchStart);
       container.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [media, onNext, onPrev, scale]);
-
-  // Handle double tap to zoom
-  const handleDoubleTap = () => {
-    setScale(scale === 1 ? 2 : 1);
-    setPosition({ x: 0, y: 0 });
-  };
-
-  // Handle pinch zoom
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      // For pinch zoom
-      const distance = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      
-      e.currentTarget.dataset.initialDistance = distance.toString();
-      e.currentTarget.dataset.initialScale = scale.toString();
-    } else if (e.touches.length === 1 && scale > 1) {
-      // For panning when zoomed
-      setIsPanning(true);
-      setStartPos({
-        x: e.touches[0].clientX - position.x,
-        y: e.touches[0].clientY - position.y
-      });
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      // Pinch zoom
-      const initialDistance = Number(e.currentTarget.dataset.initialDistance || 0);
-      const initialScale = Number(e.currentTarget.dataset.initialScale || 1);
-      
-      if (initialDistance) {
-        const distance = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
-        );
-        
-        let newScale = initialScale * (distance / initialDistance);
-        newScale = Math.max(1, Math.min(4, newScale)); // Limit between 1x and 4x
-        
-        setScale(newScale);
-      }
-    } else if (e.touches.length === 1 && isPanning) {
-      // Panning when zoomed
-      const newX = e.touches[0].clientX - startPos.x;
-      const newY = e.touches[0].clientY - startPos.y;
-      
-      setPosition({ x: newX, y: newY });
-    }
-  };
-
-  const handleTouchEnd = () => {
-    setIsPanning(false);
-  };
+  }, [media, onNext, onPrev]); 
 
   // Handle video playback
   const togglePlayback = () => {
@@ -168,10 +102,6 @@ export default function MediaViewer({
       <div 
         ref={containerRef}
         className="flex-grow flex items-center justify-center overflow-hidden"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onDoubleClick={handleDoubleTap}
       >
         <PhotoProvider>
           {media.type.startsWith("image/") ? (
