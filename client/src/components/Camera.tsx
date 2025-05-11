@@ -111,7 +111,7 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
         blob,
       };
 
-      await handleMediaSave(mediaItem);
+      handleMediaSave(mediaItem);
     }, "image/jpeg", 1);
   };
 
