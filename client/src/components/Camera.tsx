@@ -90,7 +90,6 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
     if (!videoRef.current) return;
 
     setPhotoTaken(true);
-    setTimeout(() => setPhotoTaken(false), 500);
 
     const canvas = document.createElement("canvas");
     const video = videoRef.current;
@@ -98,7 +97,7 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext("2d");
     if (ctx) ctx.drawImage(video, 0, 0);
-
+     
     canvas.toBlob(async (blob) => {
       if (!blob) return;
 
@@ -111,8 +110,10 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
         blob,
       };
 
-      handleMediaSave(mediaItem);
+      await handleMediaSave(mediaItem);
     }, "image/jpeg", 1);
+    
+    setTimeout(() => setPhotoTaken(false), 500);
   };
 
   const handleRecord = () => {
