@@ -65,7 +65,6 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
   }, [isConnected, s3Config]);
 
   const initCamera = async () => {
-    if (!selectedDeviceId) return;
     if (stream) {
       stream.getTracks().forEach((track) => track.stop());
     }
@@ -73,7 +72,7 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
     try {
       const newStream = await navigator.mediaDevices.getUserMedia({
         video: {
-          deviceId: { exact: selectedDeviceId },
+          deviceId: selectedDeviceId ? { exact: selectedDeviceId }: undefined,
           width: { ideal: 9999 },
           height: { ideal: 9999 },
           zoom: true,
