@@ -75,7 +75,7 @@ export default function MediaViewer({
   // Handle video playback
   const togglePlayback = () => {
     videoRef.current?.addEventListener('error', (e) => {
-      alert("Playback error:" + e);
+      alert("Playback error: " + e.message);
     });
     if (videoRef.current) {
       if (isPlaying) {
