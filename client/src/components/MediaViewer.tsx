@@ -75,7 +75,7 @@ export default function MediaViewer({
   // Handle video playback
   const togglePlayback = () => {
     videoRef.current?.addEventListener('error', (e) => {
-        alert('Playback error:', videoRef.current?.error);
+      alert('Playback error:', videoRef.current?.error);
     });
     if (videoRef.current) {
       if (isPlaying) {
@@ -116,15 +116,27 @@ export default function MediaViewer({
               />
             </PhotoView>
           ) : (
-            <div className="relative">
-              <video
-                src={media.url}
-                controls
-                autoPlay
-                className="max-h-full max-w-full rounded-md"
-              />
-            </div>
-          )}
+         <div className="relative w-full h-full flex items-center justify-center">
+            <video 
+              ref={videoRef}
+              src={media.url} 
+              controls={isPlaying}
+              className="max-h-full max-w-full"
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+            />
+            {!isPlaying && (
+              <div 
+                className="absolute inset-0 flex items-center justify-center"
+                onClick={togglePlayback}
+              >
+                <button className="w-16 h-16 rounded-full bg-black/50 flex items-center justify-center text-white">
+                  <i className="fas fa-play"></i>
+                </button>
+              </div>
+            )}
+          </div>
+         )}
         </PhotoProvider> 
       </div>
       
