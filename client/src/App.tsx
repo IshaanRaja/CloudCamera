@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
@@ -15,6 +15,8 @@ import { getMediaList, deleteMediaFromS3 } from "@/lib/s3";
 import { MediaItem, S3Config } from "@/lib/types";
 
 function App() {
+  const GALLERY_REFRESH_INTERVAL_MS = 60_000;
+
   // App state
   const [activeTab, setActiveTab] = useState<string>("camera");
   const [isConnected, setIsConnected] = useState<boolean>(navigator.onLine);
@@ -33,6 +35,8 @@ function App() {
   const [confirmMessage, setConfirmMessage] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [s3Connected, setS3Connected] = useState<boolean>(false);
+  const lastMediaRefreshRef = useRef<number>(0);
+  const [hasOpenedGallery, setHasOpenedGallery] = useState<boolean>(false);
   
   const { toast } = useToast();
 
@@ -80,6 +84,7 @@ function App() {
       items.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setMediaItems(items);
       setS3Connected(true);
+      lastMediaRefreshRef.current = Date.now();
     } catch (error) {
       console.error("Failed to load media items:", error);
       setS3Connected(false);
@@ -101,9 +106,13 @@ function App() {
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
     
-    // Refresh media items when switching to gallery
+    // Show the current gallery immediately and refresh only when stale.
     if (tab === "view" && s3Config.bucket) {
-      refreshMediaItems();
+      setHasOpenedGallery(true);
+      const isStale = Date.now() - lastMediaRefreshRef.current > GALLERY_REFRESH_INTERVAL_MS;
+      if (mediaItems.length === 0 || isStale) {
+        void refreshMediaItems();
+      }
     }
   };
 
@@ -170,6 +179,10 @@ function App() {
     setSelectedMedia(media);
   };
 
+  const selectedMediaIndex = selectedMedia
+    ? mediaItems.findIndex((item) => item.key === selectedMedia.key)
+    : -1;
+
   // Function to handle deleting media
   const handleDeleteMedia = (media: MediaItem) => {
     setConfirmMessage("Are you sure you want to delete this item? This action cannot be undone.");
@@ -199,6 +212,24 @@ function App() {
       <div className="h-screen w-full flex flex-col bg-ios-lightgray dark:bg-ios-darkgray text-black dark:text-white overflow-hidden">
         {/* Active Screen */}
         <div className="flex-grow overflow-hidden relative">
+          {hasOpenedGallery && (
+            <div
+              className={`absolute inset-0 ${
+                activeTab === "view" ? "z-10" : "pointer-events-none z-0"
+              }`}
+              style={{ visibility: activeTab === "view" ? "visible" : "hidden" }}
+              aria-hidden={activeTab !== "view"}
+            >
+              <Gallery 
+                mediaItems={mediaItems}
+                isLoading={isLoading}
+                isConnected={s3Connected}
+                onSelectMedia={handleSelectMedia}
+                onRefresh={refreshMediaItems}
+              />
+            </div>
+          )}
+
           {activeTab === "camera" && (
             <Camera 
               isConnected={isConnected}
@@ -208,7 +239,7 @@ function App() {
             />
           )}
           
-          {activeTab === "view" && (
+          {!hasOpenedGallery && activeTab === "view" && (
             <Gallery 
               mediaItems={mediaItems}
               isLoading={isLoading}
@@ -217,7 +248,7 @@ function App() {
               onRefresh={refreshMediaItems}
             />
           )}
-          
+
           {activeTab === "settings" && (
             <Settings 
               s3Config={s3Config}
@@ -237,18 +268,17 @@ function App() {
           <MediaViewer 
             media={selectedMedia} 
             mediaItems={mediaItems}
+            currentIndex={selectedMediaIndex}
             onClose={() => setSelectedMedia(null)}
             onDelete={handleDeleteMedia}
-            onNext={(current) => {
-              const index = mediaItems.findIndex(item => item.key === current.key);
-              if (index > 0) {
-                setSelectedMedia(mediaItems[index - 1]);
+            onNext={() => {
+              if (selectedMediaIndex > 0) {
+                setSelectedMedia(mediaItems[selectedMediaIndex - 1]);
               }
             }}
-            onPrev={(current) => {
-              const index = mediaItems.findIndex(item => item.key === current.key);
-              if (index < mediaItems.length - 1) {
-                setSelectedMedia(mediaItems[index + 1]);
+            onPrev={() => {
+              if (selectedMediaIndex >= 0 && selectedMediaIndex < mediaItems.length - 1) {
+                setSelectedMedia(mediaItems[selectedMediaIndex + 1]);
               }
             }}
           />

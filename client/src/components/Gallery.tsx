@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { memo, useMemo } from "react";
 import { FixedSizeGrid as Grid } from "react-window";
 import AutoSizer from "react-virtualized-auto-sizer";
 import { MediaItem } from "@/lib/types";
@@ -54,12 +54,6 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
 }
 
 export default function Gallery({ mediaItems, isLoading, isConnected, onSelectMedia, onRefresh }: GalleryProps) {
-  const [sortedItems, setSortedItems] = useState<MediaItem[]>([]);
-
-  useEffect(() => {
-   setSortedItems(mediaItems);
-  }, [mediaItems]);
-
   return (
     <div className="h-full flex flex-col">
       <header className="px-4 py-3 bg-white dark:bg-ios-darkgray border-b border-gray-200 dark:border-gray-800">
@@ -71,71 +65,75 @@ export default function Gallery({ mediaItems, isLoading, isConnected, onSelectMe
           <LoadingState />
         ) : !isConnected ? (
           <ErrorState onRetry={onRefresh} />
-        ) : sortedItems.length === 0 ? (
+        ) : mediaItems.length === 0 ? (
           <EmptyState />
         ) : (
-          <MediaGrid items={sortedItems} onSelectMedia={onSelectMedia} />
+          <MediaGrid items={mediaItems} onSelectMedia={onSelectMedia} />
         )}
       </div>
     </div>
   );
 }
 
+interface CellData {
+  items: MediaItem[];
+  onSelectMedia: (media: MediaItem) => void;
+  columnCount: number;
+}
+
+const MediaCell = memo(function MediaCell({
+  columnIndex,
+  rowIndex,
+  style,
+  data,
+}: {
+  columnIndex: number;
+  rowIndex: number;
+  style: React.CSSProperties;
+  data: CellData;
+}) {
+  const index = rowIndex * data.columnCount + columnIndex;
+  if (index >= data.items.length) return null;
+
+  const item = data.items[index];
+
+  return (
+    <div style={style} className="p-0.5">
+      <button
+        type="button"
+        className="relative block h-full w-full overflow-hidden bg-gray-200 dark:bg-gray-800"
+        onClick={() => data.onSelectMedia(item)}
+      >
+        <img
+          src={item.thumbnail || item.url}
+          alt=""
+          loading="eager"
+          decoding="async"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        {item.type.startsWith("video/") && (
+          <div className="absolute bottom-1 right-1">
+            <i className="fas fa-play text-white text-xs w-4 h-4 flex items-center justify-center bg-black/50 rounded-full"></i>
+          </div>
+        )}
+        <div className="opacity-0 hover:opacity-100 absolute inset-0 bg-black/20 flex items-center justify-center transition-opacity">
+          <span className="text-white">
+            <i className="fas fa-expand text-lg"></i>
+          </span>
+        </div>
+      </button>
+    </div>
+  );
+});
+
 function MediaGrid({ items, onSelectMedia }: { items: MediaItem[], onSelectMedia: (media: MediaItem) => void }) {
   const columnCount = 3;
   const cellSize = 120;
-
-  const Cell = ({ columnIndex, rowIndex, style }: any) => {
-    const index = rowIndex * columnCount + columnIndex;
-    if (index >= items.length) return null;
-
-    const item = items[index];
-    const ref = useRef<HTMLDivElement | null>(null);
-    const [isVisible, setIsVisible] = useState(false);
-
-    useEffect(() => {
-      const observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach(entry => {
-            if (entry.isIntersecting) {
-              setIsVisible(true);
-              observer.disconnect();
-            }
-          });
-        },
-        { rootMargin: "200px" }
-      );
-      if (ref.current) observer.observe(ref.current);
-
-      return () => observer.disconnect();
-    }, []);
-
-    return (
-      <div style={style} ref={ref} className="p-0.5">
-        <div
-          className="relative w-full h-full bg-gray-200 dark:bg-gray-800"
-          onClick={() => onSelectMedia(item)}
-        >
-          {isVisible && (
-            <div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${item.thumbnail || item.url})` }}
-            />
-          )}
-          {item.type.startsWith("video/") && (
-            <div className="absolute bottom-1 right-1">
-              <i className="fas fa-play text-white text-xs w-4 h-4 flex items-center justify-center bg-black/50 rounded-full"></i>
-            </div>
-          )}
-          <div className="opacity-0 hover:opacity-100 absolute inset-0 bg-black/20 flex items-center justify-center transition-opacity">
-            <button className="text-white">
-              <i className="fas fa-expand text-lg"></i>
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
+  const cellData = useMemo<CellData>(() => ({
+    items,
+    onSelectMedia,
+    columnCount,
+  }), [items, onSelectMedia]);
 
   return (
     <AutoSizer>
@@ -150,12 +148,13 @@ function MediaGrid({ items, onSelectMedia }: { items: MediaItem[], onSelectMedia
             rowCount={rowCount}
             rowHeight={cellSize}
             width={width}
+            itemData={cellData}
+            overscanRowCount={6}
           >
-            {Cell}
+            {MediaCell}
           </Grid>
         );
       }}
     </AutoSizer>
   );
 }
-

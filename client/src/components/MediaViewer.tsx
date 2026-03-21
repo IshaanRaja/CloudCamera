@@ -7,15 +7,17 @@ import "react-photo-view/dist/react-photo-view.css";
 interface MediaViewerProps {
   media: MediaItem;
   mediaItems: MediaItem[];
+  currentIndex: number;
   onClose: () => void;
   onDelete: (media: MediaItem) => void;
-  onNext: (media: MediaItem) => void;
-  onPrev: (media: MediaItem) => void;
+  onNext: () => void;
+  onPrev: () => void;
 }
 
 export default function MediaViewer({ 
   media, 
   mediaItems, 
+  currentIndex,
   onClose, 
   onDelete, 
   onNext, 
@@ -34,6 +36,17 @@ export default function MediaViewer({
   useEffect(() => {
     setIsPlaying(false);
   }, [media]);
+
+  useEffect(() => {
+    const adjacentItems = [mediaItems[currentIndex - 1], mediaItems[currentIndex + 1]].filter(
+      (item): item is MediaItem => Boolean(item && item.type.startsWith("image/")),
+    );
+
+    adjacentItems.forEach((item) => {
+      const image = new Image();
+      image.src = item.url;
+    });
+  }, [currentIndex, mediaItems]);
 
   // Set up swipe detection
   useEffect(() => {
@@ -56,9 +69,9 @@ export default function MediaViewer({
       // Check if it's a swipe (fast enough and long enough)
       if (diffTime < 300 && Math.abs(diffX) > 50) {
         if (diffX > 0) {
-          onNext(media);
+          onNext();
         } else {
-          onPrev(media);
+          onPrev();
         }
       }
     };
@@ -70,13 +83,25 @@ export default function MediaViewer({
       container.removeEventListener('touchstart', handleTouchStart);
       container.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [media, onNext, onPrev]); 
+  }, [onNext, onPrev]); 
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "ArrowRight") {
+        onPrev();
+      } else if (event.key === "ArrowLeft") {
+        onNext();
+      } else if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, onNext, onPrev]);
 
   // Handle video playback
   const togglePlayback = () => {
-    videoRef.current?.addEventListener('error', (e) => {
-      alert("Playback error: " + videoRef.current?.error.code);
-    });
     if (videoRef.current) {
       if (isPlaying) {
         videoRef.current.pause();
@@ -112,6 +137,8 @@ export default function MediaViewer({
               <img
                 src={media.url}
                 alt="Media"
+                loading="eager"
+                decoding="async"
                 className="max-h-full max-w-full object-contain cursor-zoom-in"
               />
             </PhotoView>
@@ -120,6 +147,7 @@ export default function MediaViewer({
             <video 
               ref={videoRef}
               src={media.url} 
+              preload="metadata"
               controls={isPlaying}
               className="max-h-full max-w-full"
               onPlay={() => setIsPlaying(true)}
