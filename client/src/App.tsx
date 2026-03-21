@@ -269,6 +269,7 @@ function App() {
             media={selectedMedia} 
             mediaItems={mediaItems}
             currentIndex={selectedMediaIndex}
+            onSelectMedia={setSelectedMedia}
             onClose={() => setSelectedMedia(null)}
             onDelete={handleDeleteMedia}
             onNext={() => {
