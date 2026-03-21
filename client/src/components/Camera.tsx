@@ -7,10 +7,11 @@ interface CameraProps {
   isConnected: boolean;
   s3Config: S3Config;
   onAddPendingUpload: (media: MediaItem) => void;
+  onMediaSaved: (media: MediaItem) => void;
   showErrorToast: (message: string) => void;
 }
 
-export default function Camera({ isConnected, s3Config, onAddPendingUpload, showErrorToast }: CameraProps) {
+export default function Camera({ isConnected, s3Config, onAddPendingUpload, onMediaSaved, showErrorToast }: CameraProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const [cameraMode, setCameraMode] = useState<"photo" | "video">("photo");
@@ -166,6 +167,8 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
       onAddPendingUpload(mediaItem);
       showErrorToast("Media saved locally. Will upload when connected.");
     }
+
+    onMediaSaved(mediaItem);
   };
 
   const handleZoom = (e: React.TouchEvent<HTMLDivElement>) => {
@@ -261,4 +264,3 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, show
     </div>
   );
 }
-

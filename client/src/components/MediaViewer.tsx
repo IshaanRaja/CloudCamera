@@ -27,6 +27,7 @@ export default function MediaViewer({
 }: MediaViewerProps) {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [isVideoReady, setIsVideoReady] = useState<boolean>(false);
+  const [loadedImageUrls, setLoadedImageUrls] = useState<Record<string, boolean>>({});
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -55,6 +56,23 @@ export default function MediaViewer({
   useEffect(() => {
     setIsPlaying(false);
     setIsVideoReady(false);
+  }, [media]);
+
+  useEffect(() => {
+    if (!media.type.startsWith("image/")) return;
+
+    let isCancelled = false;
+    const image = new Image();
+    image.onload = () => {
+      if (!isCancelled) {
+        setLoadedImageUrls((current) => ({ ...current, [media.url]: true }));
+      }
+    };
+    image.src = media.url;
+
+    return () => {
+      isCancelled = true;
+    };
   }, [media]);
 
   useEffect(() => {
@@ -132,6 +150,12 @@ export default function MediaViewer({
   if (media.type.startsWith("image/")) {
     return (
       <div className="fixed inset-0 z-50">
+        {!loadedImageUrls[media.url] && (
+          <div className="pointer-events-none absolute inset-0 z-[2100] flex flex-col items-center justify-center gap-4 bg-black text-white/80">
+            <i className="fas fa-spinner fa-spin text-3xl"></i>
+            <span className="text-sm">Loading photo...</span>
+          </div>
+        )}
         <PhotoSlider
           images={sliderImages}
           index={imageIndex}

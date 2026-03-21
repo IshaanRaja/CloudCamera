@@ -37,8 +37,41 @@ function App() {
   const [s3Connected, setS3Connected] = useState<boolean>(false);
   const lastMediaRefreshRef = useRef<number>(0);
   const [hasOpenedGallery, setHasOpenedGallery] = useState<boolean>(false);
+  const objectUrlMapRef = useRef<Map<string, string>>(new Map());
   
   const { toast } = useToast();
+
+  const revokeMediaObjectUrl = (mediaKey: string) => {
+    const objectUrl = objectUrlMapRef.current.get(mediaKey);
+    if (objectUrl) {
+      URL.revokeObjectURL(objectUrl);
+      objectUrlMapRef.current.delete(mediaKey);
+    }
+  };
+
+  const upsertMediaItem = (item: MediaItem) => {
+    setMediaItems((currentItems) => {
+      const nextItems = [item, ...currentItems.filter((currentItem) => currentItem.key !== item.key)];
+      return nextItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    });
+  };
+
+  const handleMediaSaved = (media: MediaItem) => {
+    const normalizedMedia: MediaItem = { ...media };
+
+    if (!normalizedMedia.url && normalizedMedia.blob) {
+      revokeMediaObjectUrl(normalizedMedia.key);
+      const objectUrl = URL.createObjectURL(normalizedMedia.blob);
+      objectUrlMapRef.current.set(normalizedMedia.key, objectUrl);
+      normalizedMedia.url = objectUrl;
+    }
+
+    upsertMediaItem(normalizedMedia);
+    setSelectedMedia((currentSelectedMedia) =>
+      currentSelectedMedia?.key === normalizedMedia.key ? normalizedMedia : currentSelectedMedia,
+    );
+    setHasOpenedGallery(true);
+  };
 
   // Load S3 config on mount
   useEffect(() => {
@@ -47,6 +80,11 @@ function App() {
       setS3Config(config);
       refreshMediaItems(config);
     }
+
+    return () => {
+      objectUrlMapRef.current.forEach((objectUrl) => URL.revokeObjectURL(objectUrl));
+      objectUrlMapRef.current.clear();
+    };
   }, []);
 
   // Handle online/offline status
@@ -82,7 +120,21 @@ function App() {
     try {
       const items = await getMediaList(config);
       items.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      setMediaItems(items);
+      setMediaItems((currentItems) => {
+        const currentItemsByKey = new Map(currentItems.map((item) => [item.key, item]));
+
+        return items.map((item) => {
+          const existingItem = currentItemsByKey.get(item.key);
+          if (!existingItem) return item;
+
+          return {
+            ...item,
+            url: existingItem.url || item.url,
+            thumbnail: existingItem.thumbnail || item.thumbnail,
+            blob: existingItem.blob ?? item.blob,
+          };
+        });
+      });
       setS3Connected(true);
       lastMediaRefreshRef.current = Date.now();
     } catch (error) {
@@ -183,12 +235,28 @@ function App() {
     ? mediaItems.findIndex((item) => item.key === selectedMedia.key)
     : -1;
 
+  useEffect(() => {
+    if (!selectedMedia) return;
+
+    const updatedSelectedMedia = mediaItems.find((item) => item.key === selectedMedia.key);
+    if (!updatedSelectedMedia) {
+      setSelectedMedia(null);
+      return;
+    }
+
+    if (updatedSelectedMedia !== selectedMedia) {
+      setSelectedMedia(updatedSelectedMedia);
+    }
+  }, [mediaItems, selectedMedia]);
+
   // Function to handle deleting media
   const handleDeleteMedia = (media: MediaItem) => {
     setConfirmMessage("Are you sure you want to delete this item? This action cannot be undone.");
     setConfirmAction(() => async () => {
       await deleteMediaFromS3(media, s3Config); 
-      setMediaItems(mediaItems.filter(item => item.key !== media.key));
+      revokeMediaObjectUrl(media.key);
+      setMediaItems((currentItems) => currentItems.filter((item) => item.key !== media.key));
+      setPendingUploads((currentItems) => currentItems.filter((item) => item.key !== media.key));
       setSelectedMedia(null);
       toast({
         title: "Deleted",
@@ -235,6 +303,7 @@ function App() {
               isConnected={isConnected}
               s3Config={s3Config}
               onAddPendingUpload={(media) => setPendingUploads([...pendingUploads, media])}
+              onMediaSaved={handleMediaSaved}
               showErrorToast={showErrorToast}
             />
           )}
@@ -266,6 +335,7 @@ function App() {
         {/* Media Viewer */}
         {selectedMedia && (
           <MediaViewer 
+            key={selectedMedia.key}
             media={selectedMedia} 
             mediaItems={mediaItems}
             currentIndex={selectedMediaIndex}

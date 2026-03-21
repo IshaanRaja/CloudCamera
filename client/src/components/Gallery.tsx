@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react";
+import { memo, useMemo, useRef, useState } from "react";
 import { FixedSizeGrid as Grid } from "react-window";
 import AutoSizer from "react-virtualized-auto-sizer";
 import { MediaItem } from "@/lib/types";
@@ -54,6 +54,8 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
 }
 
 export default function Gallery({ mediaItems, isLoading, isConnected, onSelectMedia, onRefresh }: GalleryProps) {
+  const hasMedia = mediaItems.length > 0;
+
   return (
     <div className="h-full flex flex-col">
       <header className="px-4 py-3 bg-white dark:bg-ios-darkgray border-b border-gray-200 dark:border-gray-800">
@@ -61,14 +63,19 @@ export default function Gallery({ mediaItems, isLoading, isConnected, onSelectMe
       </header>
 
       <div className="flex-grow overflow-hidden">
-        {isLoading ? (
-          <LoadingState />
-        ) : !isConnected ? (
+        {!isConnected && !hasMedia ? (
           <ErrorState onRetry={onRefresh} />
-        ) : mediaItems.length === 0 ? (
+        ) : !hasMedia && isLoading ? (
+          <LoadingState />
+        ) : !hasMedia ? (
           <EmptyState />
         ) : (
-          <MediaGrid items={mediaItems} onSelectMedia={onSelectMedia} />
+          <MediaGrid
+            items={mediaItems}
+            isRefreshing={isLoading}
+            onSelectMedia={onSelectMedia}
+            onRefresh={onRefresh}
+          />
         )}
       </div>
     </div>
@@ -126,35 +133,111 @@ const MediaCell = memo(function MediaCell({
   );
 });
 
-function MediaGrid({ items, onSelectMedia }: { items: MediaItem[], onSelectMedia: (media: MediaItem) => void }) {
+function MediaGrid({
+  items,
+  isRefreshing,
+  onSelectMedia,
+  onRefresh,
+}: {
+  items: MediaItem[],
+  isRefreshing: boolean,
+  onSelectMedia: (media: MediaItem) => void,
+  onRefresh: () => void,
+}) {
   const columnCount = 3;
   const cellSize = 120;
+  const outerRef = useRef<HTMLDivElement | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+  const [pullDistance, setPullDistance] = useState(0);
   const cellData = useMemo<CellData>(() => ({
     items,
     onSelectMedia,
     columnCount,
   }), [items, onSelectMedia]);
 
+  const pullThreshold = 70;
+
+  const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (outerRef.current?.scrollTop === 0) {
+      touchStartYRef.current = event.touches[0].clientY;
+    } else {
+      touchStartYRef.current = null;
+    }
+  };
+
+  const handleTouchMove = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (touchStartYRef.current === null) return;
+
+    const nextPullDistance = Math.max(0, event.touches[0].clientY - touchStartYRef.current);
+    if (nextPullDistance > 0 && outerRef.current?.scrollTop === 0) {
+      setPullDistance(Math.min(nextPullDistance, 110));
+    } else {
+      setPullDistance(0);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (pullDistance >= pullThreshold) {
+      onRefresh();
+    }
+    touchStartYRef.current = null;
+    setPullDistance(0);
+  };
+
   return (
-    <AutoSizer>
-      {({ height, width }) => {
-        const columnWidth = width / columnCount;
-        const rowCount = Math.ceil(items.length / columnCount);
-        return (
-          <Grid
-            columnCount={columnCount}
-            columnWidth={columnWidth}
-            height={height}
-            rowCount={rowCount}
-            rowHeight={cellSize}
-            width={width}
-            itemData={cellData}
-            overscanRowCount={6}
-          >
-            {MediaCell}
-          </Grid>
-        );
-      }}
-    </AutoSizer>
+    <div
+      className="relative h-full"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
+    >
+      <div
+        className="absolute inset-x-0 top-0 z-10 flex justify-center text-ios-blue transition-transform duration-150"
+        style={{
+          transform: `translateY(${Math.max(pullDistance - 40, -32)}px)`,
+          opacity: pullDistance > 0 || isRefreshing ? 1 : 0,
+        }}
+      >
+        <div className="rounded-full bg-white/90 px-3 py-2 text-sm shadow">
+          <i
+            className={`fas ${
+              isRefreshing
+                ? "fa-spinner fa-spin"
+                : pullDistance >= pullThreshold
+                  ? "fa-rotate-right"
+                  : "fa-arrow-down"
+            } mr-2`}
+          ></i>
+          {isRefreshing
+            ? "Refreshing..."
+            : pullDistance >= pullThreshold
+              ? "Release to refresh"
+              : "Pull to refresh"}
+        </div>
+      </div>
+
+      <AutoSizer>
+        {({ height, width }) => {
+          const columnWidth = width / columnCount;
+          const rowCount = Math.ceil(items.length / columnCount);
+          return (
+            <Grid
+              columnCount={columnCount}
+              columnWidth={columnWidth}
+              height={height}
+              rowCount={rowCount}
+              rowHeight={cellSize}
+              width={width}
+              itemData={cellData}
+              overscanRowCount={6}
+              outerRef={outerRef}
+            >
+              {MediaCell}
+            </Grid>
+          );
+        }}
+      </AutoSizer>
+    </div>
   );
 }
