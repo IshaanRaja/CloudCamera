@@ -11,3 +11,42 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+@keyframes camera-shutter-flash {
+  0% {
+    opacity: 0;
+  }
+
+  15% {
+    opacity: 0.95;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes camera-shutter-frame {
+  0% {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+
+  20% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+.camera-shutter-flash {
+  animation: camera-shutter-flash 280ms ease-out forwards;
+}
+
+.camera-shutter-frame {
+  animation: camera-shutter-frame 320ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

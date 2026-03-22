@@ -226,6 +226,12 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, onMe
         ref={videoRef}
         className="absolute w-full h-full object-cover"
       />
+      {cameraMode === "photo" && photoTaken && (
+        <>
+          <div className="camera-shutter-flash pointer-events-none absolute inset-0 z-10 bg-white" />
+          <div className="camera-shutter-frame pointer-events-none absolute inset-0 z-10 border-[12px] border-white/80" />
+        </>
+      )}
 
       <div className="absolute bottom-0 w-full flex flex-col items-center justify-center p-4 space-y-2 bg-gradient-to-t from-black via-black/30 to-transparent">
         <div className="flex justify-between w-full px-6 text-white text-sm">
@@ -248,8 +254,12 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, onMe
 
         <div className="flex items-center justify-center space-x-6">
           <button
-            className={`w-16 h-16 rounded-full transition duration-500 ${
-              cameraMode === "photo" && photoTaken ? "bg-neutral-500 scale-95 brightness-90" : "bg-white"
+            className={`w-16 h-16 rounded-full border-4 border-white/40 transition duration-300 ${
+              cameraMode === "photo" && photoTaken
+                ? "bg-white scale-75 ring-8 ring-white/50"
+                : cameraMode === "photo"
+                  ? "bg-white shadow-[0_0_0_10px_rgba(255,255,255,0.18)]"
+                  : "bg-white"
             }`}
             onClick={cameraMode === "photo" ? handleCapture : handleRecord}
           >
