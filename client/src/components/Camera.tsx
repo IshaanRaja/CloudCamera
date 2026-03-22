@@ -14,6 +14,7 @@ interface CameraProps {
 export default function Camera({ isConnected, s3Config, onAddPendingUpload, onMediaSaved, showErrorToast }: CameraProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [cameraMode, setCameraMode] = useState<"photo" | "video">("photo");
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -26,11 +27,19 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, onMe
   const lastAppliedZoomRef = useRef<number>(zoom);
 
   useEffect(() => {
-    initCamera();
+    void initCamera();
     return () => {
-      stream?.getTracks().forEach((track) => track.stop());
+      stopCameraStream(streamRef.current);
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+      streamRef.current = null;
     };
   }, [selectedDeviceId, flashOn, cameraMode]);
+
+  const stopCameraStream = (mediaStream: MediaStream | null) => {
+    mediaStream?.getTracks().forEach((track) => track.stop());
+  };
 
   const uploadBufferedMedia = async () => {
     if (!isConnected || !s3Config.bucket) return;
@@ -62,9 +71,8 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, onMe
   }
 
   const initCamera = async () => {
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-    }
+    stopCameraStream(streamRef.current);
+    streamRef.current = null;
 
     try {
       const newStream = await navigator.mediaDevices.getUserMedia({
@@ -87,6 +95,7 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, onMe
         }
       }
 
+      streamRef.current = newStream;
       setStream(newStream);
       if (videoRef.current) {
         videoRef.current.srcObject = newStream;
@@ -95,6 +104,7 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, onMe
     } catch (error) {
       showErrorToast("Camera access failed");
       console.error(error);
+      setStream(null);
     }
   };
 
@@ -136,6 +146,7 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, onMe
 
       recorder.ondataavailable = (e) => chunks.push(e.data);
       recorder.onstop = async () => {
+        mediaRecorderRef.current = null;
         const blob = new Blob(chunks, { type: "video/mp4" });
         const now = new Date();
         const mediaItem: MediaItem = {
