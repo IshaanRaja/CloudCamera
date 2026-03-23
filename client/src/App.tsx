@@ -253,10 +253,14 @@ function App() {
   const handleDeleteMedia = (media: MediaItem) => {
     setConfirmMessage("Are you sure you want to delete this item? This action cannot be undone.");
     setConfirmAction(() => async () => {
-      setSelectedMedia(null);
-
       const deletedMediaIndex = mediaItems.findIndex((item) => item.key === media.key);
       const deletedPendingUpload = pendingUploads.find((item) => item.key === media.key) ?? null;
+      const replacementMedia =
+        deletedMediaIndex > 0
+          ? mediaItems[deletedMediaIndex - 1]
+          : mediaItems[deletedMediaIndex + 1] ?? null;
+
+      setSelectedMedia(replacementMedia);
 
       setMediaItems((currentItems) => currentItems.filter((item) => item.key !== media.key));
       setPendingUploads((currentItems) => currentItems.filter((item) => item.key !== media.key));
@@ -294,6 +298,7 @@ function App() {
           });
         }
 
+        setSelectedMedia(media);
         showErrorToast("Failed to delete media item. It has been restored.");
         console.error("Failed to delete media item:", error);
       }

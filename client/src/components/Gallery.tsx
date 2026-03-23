@@ -156,6 +156,16 @@ function MediaGrid({
   }), [items, onSelectMedia]);
 
   const pullThreshold = 70;
+  const getItemKey = ({
+    columnIndex,
+    rowIndex,
+  }: {
+    columnIndex: number;
+    rowIndex: number;
+  }) => {
+    const index = rowIndex * columnCount + columnIndex;
+    return items[index]?.key ?? `empty-${rowIndex}-${columnIndex}`;
+  };
 
   const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
     if (outerRef.current?.scrollTop === 0) {
@@ -226,6 +236,7 @@ function MediaGrid({
               columnCount={columnCount}
               columnWidth={columnWidth}
               height={height}
+              itemKey={getItemKey}
               rowCount={rowCount}
               rowHeight={cellSize}
               width={width}
