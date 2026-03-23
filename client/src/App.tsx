@@ -73,27 +73,6 @@ function App() {
     setHasOpenedGallery(true);
   };
 
-  const pendingUploadKeys = new Set(pendingUploads.map((item) => item.key));
-
-  const addPendingUpload = (media: MediaItem) => {
-    setPendingUploads((currentItems) => {
-      if (currentItems.some((currentItem) => currentItem.key === media.key)) {
-        return currentItems;
-      }
-
-      return [media, ...currentItems];
-    });
-  };
-
-  const clearPendingUploads = (mediaKeys: string[]) => {
-    if (mediaKeys.length === 0) return;
-
-    const mediaKeySet = new Set(mediaKeys);
-    setPendingUploads((currentItems) =>
-      currentItems.filter((item) => !mediaKeySet.has(item.key)),
-    );
-  };
-
   // Load S3 config on mount
   useEffect(() => {
     const config = loadS3Config();
@@ -311,7 +290,6 @@ function App() {
             >
               <Gallery 
                 mediaItems={mediaItems}
-                pendingUploadKeys={pendingUploadKeys}
                 isLoading={isLoading}
                 isConnected={s3Connected}
                 onSelectMedia={handleSelectMedia}
@@ -324,8 +302,7 @@ function App() {
             <Camera 
               isConnected={isConnected}
               s3Config={s3Config}
-              onAddPendingUpload={addPendingUpload}
-              onPendingUploadsCompleted={clearPendingUploads}
+              onAddPendingUpload={(media) => setPendingUploads([...pendingUploads, media])}
               onMediaSaved={handleMediaSaved}
               showErrorToast={showErrorToast}
             />
@@ -334,7 +311,6 @@ function App() {
           {!hasOpenedGallery && activeTab === "view" && (
             <Gallery 
               mediaItems={mediaItems}
-              pendingUploadKeys={pendingUploadKeys}
               isLoading={isLoading}
               isConnected={s3Connected}
               onSelectMedia={handleSelectMedia}

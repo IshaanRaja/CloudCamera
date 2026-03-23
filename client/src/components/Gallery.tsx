@@ -5,7 +5,6 @@ import { MediaItem } from "@/lib/types";
 
 interface GalleryProps {
   mediaItems: MediaItem[];
-  pendingUploadKeys: Set<string>;
   isLoading: boolean;
   isConnected: boolean;
   onSelectMedia: (media: MediaItem) => void;
@@ -54,7 +53,7 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-export default function Gallery({ mediaItems, pendingUploadKeys, isLoading, isConnected, onSelectMedia, onRefresh }: GalleryProps) {
+export default function Gallery({ mediaItems, isLoading, isConnected, onSelectMedia, onRefresh }: GalleryProps) {
   const hasMedia = mediaItems.length > 0;
 
   return (
@@ -73,7 +72,6 @@ export default function Gallery({ mediaItems, pendingUploadKeys, isLoading, isCo
         ) : (
           <MediaGrid
             items={mediaItems}
-            pendingUploadKeys={pendingUploadKeys}
             isRefreshing={isLoading}
             onSelectMedia={onSelectMedia}
             onRefresh={onRefresh}
@@ -86,7 +84,6 @@ export default function Gallery({ mediaItems, pendingUploadKeys, isLoading, isCo
 
 interface CellData {
   items: MediaItem[];
-  pendingUploadKeys: Set<string>;
   onSelectMedia: (media: MediaItem) => void;
   columnCount: number;
 }
@@ -106,7 +103,6 @@ const MediaCell = memo(function MediaCell({
   if (index >= data.items.length) return null;
 
   const item = data.items[index];
-  const isPendingUpload = data.pendingUploadKeys.has(item.key);
 
   return (
     <div style={style} className="p-0.5">
@@ -122,11 +118,6 @@ const MediaCell = memo(function MediaCell({
           decoding="async"
           className="absolute inset-0 h-full w-full object-cover"
         />
-        {isPendingUpload && (
-          <div className="absolute bottom-1 left-1">
-            <i className="fas fa-cloud-upload-alt text-white text-xs w-5 h-5 flex items-center justify-center bg-black/55 rounded-full"></i>
-          </div>
-        )}
         {item.type.startsWith("video/") && (
           <div className="absolute bottom-1 right-1">
             <i className="fas fa-play text-white text-xs w-4 h-4 flex items-center justify-center bg-black/50 rounded-full"></i>
@@ -144,13 +135,11 @@ const MediaCell = memo(function MediaCell({
 
 function MediaGrid({
   items,
-  pendingUploadKeys,
   isRefreshing,
   onSelectMedia,
   onRefresh,
 }: {
   items: MediaItem[],
-  pendingUploadKeys: Set<string>,
   isRefreshing: boolean,
   onSelectMedia: (media: MediaItem) => void,
   onRefresh: () => void,
@@ -162,10 +151,9 @@ function MediaGrid({
   const [pullDistance, setPullDistance] = useState(0);
   const cellData = useMemo<CellData>(() => ({
     items,
-    pendingUploadKeys,
     onSelectMedia,
     columnCount,
-  }), [items, pendingUploadKeys, onSelectMedia]);
+  }), [items, onSelectMedia]);
 
   const pullThreshold = 70;
 

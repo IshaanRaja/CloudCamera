@@ -7,12 +7,11 @@ interface CameraProps {
   isConnected: boolean;
   s3Config: S3Config;
   onAddPendingUpload: (media: MediaItem) => void;
-  onPendingUploadsCompleted: (mediaKeys: string[]) => void;
   onMediaSaved: (media: MediaItem) => void;
   showErrorToast: (message: string) => void;
 }
 
-export default function Camera({ isConnected, s3Config, onAddPendingUpload, onPendingUploadsCompleted, onMediaSaved, showErrorToast }: CameraProps) {
+export default function Camera({ isConnected, s3Config, onAddPendingUpload, onMediaSaved, showErrorToast }: CameraProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -54,7 +53,6 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, onPe
       const bufferedMedia = await getBufferedMedia();
       if (bufferedMedia.length > 0) {
         await uploadBufferedMediaToS3(bufferedMedia, s3Config);
-        onPendingUploadsCompleted(bufferedMedia.map((media) => media.key));
       }
     } catch (error) {
       console.error("Failed to upload buffered media:", error);
