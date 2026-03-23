@@ -114,7 +114,7 @@ const MediaCell = memo(function MediaCell({
         <img
           src={item.thumbnail || item.url}
           alt=""
-          loading="eager"
+          loading="lazy"
           decoding="async"
           className="absolute inset-0 h-full w-full object-cover"
         />
