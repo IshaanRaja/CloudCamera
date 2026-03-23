@@ -253,15 +253,50 @@ function App() {
   const handleDeleteMedia = (media: MediaItem) => {
     setConfirmMessage("Are you sure you want to delete this item? This action cannot be undone.");
     setConfirmAction(() => async () => {
-      await deleteMediaFromS3(media, s3Config); 
-      revokeMediaObjectUrl(media.key);
+      setSelectedMedia(null);
+
+      const deletedMediaIndex = mediaItems.findIndex((item) => item.key === media.key);
+      const deletedPendingUpload = pendingUploads.find((item) => item.key === media.key) ?? null;
+
       setMediaItems((currentItems) => currentItems.filter((item) => item.key !== media.key));
       setPendingUploads((currentItems) => currentItems.filter((item) => item.key !== media.key));
-      setSelectedMedia(null);
-      toast({
-        title: "Deleted",
-        description: "Media item has been deleted",
-      });
+
+      try {
+        await deleteMediaFromS3(media, s3Config);
+        revokeMediaObjectUrl(media.key);
+        toast({
+          title: "Deleted",
+          description: "Media item has been deleted",
+        });
+      } catch (error) {
+        setMediaItems((currentItems) => {
+          if (currentItems.some((item) => item.key === media.key)) {
+            return currentItems;
+          }
+
+          const nextItems = [...currentItems];
+          const insertionIndex =
+            deletedMediaIndex >= 0 && deletedMediaIndex <= nextItems.length
+              ? deletedMediaIndex
+              : nextItems.length;
+
+          nextItems.splice(insertionIndex, 0, media);
+          return nextItems;
+        });
+
+        if (deletedPendingUpload) {
+          setPendingUploads((currentItems) => {
+            if (currentItems.some((item) => item.key === deletedPendingUpload.key)) {
+              return currentItems;
+            }
+
+            return [deletedPendingUpload, ...currentItems];
+          });
+        }
+
+        showErrorToast("Failed to delete media item. It has been restored.");
+        console.error("Failed to delete media item:", error);
+      }
     });
     setShowConfirmDialog(true);
   };
