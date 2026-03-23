@@ -26,6 +26,11 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, onMe
   const debounceTimeoutRef = useRef<number | null>(null);
   const lastAppliedZoomRef = useRef<number>(zoom);
 
+  const getPreferredRearCamera = (devices: MediaDeviceInfo[]) => {
+    const rearCameraPattern = /\b(back|rear|environment|world)\b/i;
+    return devices.find((device) => rearCameraPattern.test(device.label)) ?? devices[0] ?? null;
+  };
+
   useEffect(() => {
     void initCamera();
     return () => {
@@ -66,7 +71,10 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, onMe
       const videoInputs = devices.filter((d) => d.kind === "videoinput");
       setVideoDevices(videoInputs);
       if (!selectedDeviceId && videoInputs.length > 0) {
-        setSelectedDeviceId(videoInputs[0].deviceId);
+        const preferredDevice = getPreferredRearCamera(videoInputs);
+        if (preferredDevice) {
+          setSelectedDeviceId(preferredDevice.deviceId);
+        }
       }
   }
 
@@ -78,6 +86,7 @@ export default function Camera({ isConnected, s3Config, onAddPendingUpload, onMe
       const newStream = await navigator.mediaDevices.getUserMedia({
         video: {
           deviceId: selectedDeviceId ? { exact: selectedDeviceId }: undefined,
+          facingMode: selectedDeviceId ? undefined : { ideal: "environment" },
           width: { ideal: cameraMode == "photo" ? 9999: 1920 },
           height: { ideal: cameraMode == "photo" ? 9999: 1080 },
           zoom: true,
