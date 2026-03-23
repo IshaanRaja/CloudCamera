@@ -255,12 +255,7 @@ function App() {
     setConfirmAction(() => async () => {
       const deletedMediaIndex = mediaItems.findIndex((item) => item.key === media.key);
       const deletedPendingUpload = pendingUploads.find((item) => item.key === media.key) ?? null;
-      const replacementMedia =
-        deletedMediaIndex > 0
-          ? mediaItems[deletedMediaIndex - 1]
-          : mediaItems[deletedMediaIndex + 1] ?? null;
-
-      setSelectedMedia(replacementMedia);
+      setSelectedMedia(null);
 
       setMediaItems((currentItems) => currentItems.filter((item) => item.key !== media.key));
       setPendingUploads((currentItems) => currentItems.filter((item) => item.key !== media.key));
