@@ -3,7 +3,8 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
   ListObjectsV2Command,
-  GetObjectCommand
+  GetObjectCommand,
+  HeadObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { MediaItem, S3Config } from "./types";
@@ -21,6 +22,34 @@ const createS3Client = (config: S3Config): S3Client => {
     },
     forcePathStyle: true, // Required for non-AWS S3 compatible services
   });
+};
+
+const getMediaDateFromMetadata = async (
+  s3Client: S3Client,
+  config: S3Config,
+  key: string,
+  fallbackDate: string,
+): Promise<string> => {
+  try {
+    const response = await s3Client.send(
+      new HeadObjectCommand({
+        Bucket: config.bucket,
+        Key: key,
+      }),
+    );
+
+    const metadataDate = response.Metadata?.["media-date"];
+    if (metadataDate) {
+      const parsedDate = new Date(metadataDate);
+      if (!Number.isNaN(parsedDate.getTime())) {
+        return parsedDate.toISOString();
+      }
+    }
+  } catch (error) {
+    console.warn(`Could not load metadata for ${key}; using upload timestamp instead.`, error);
+  }
+
+  return fallbackDate;
 };
 
 // Upload a single media item to S3
@@ -150,6 +179,9 @@ export const getMediaList = async (config: S3Config): Promise<MediaItem[]> => {
     mainObjects.map(async (obj) => {
       if (!obj.Key) return null;
 
+      const fallbackDate = obj.LastModified?.toISOString() || new Date().toISOString();
+      const date = await getMediaDateFromMetadata(s3Client, config, obj.Key, fallbackDate);
+
       const command = new GetObjectCommand({
             Bucket: config.bucket,
             Key: obj.Key
@@ -168,7 +200,7 @@ export const getMediaList = async (config: S3Config): Promise<MediaItem[]> => {
         key: obj.Key,
         type: isVideo ? "video/webm" : "image/jpeg",
         size: obj.Size || 0,
-        date: obj.LastModified?.toISOString() || new Date().toISOString(),
+        date,
         url: url,
         thumbnail: isVideo ? thumbnail: undefined,
       };
